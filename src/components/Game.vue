@@ -6,7 +6,7 @@
         <div class="healthbar">
           <div
             class="healthbar text-center"
-            style="background-color: green; margin: 0; color: white;"
+            style="background-color: green; margin: 0; color: white; font-weight: bold"
             :style="{ width: playerHealth + '%' }"
           >
             {{ playerHealth }}
@@ -18,7 +18,7 @@
         <div class="healthbar">
           <div
             class="healthbar text-center"
-            style="background-color: green; margin: 0; color: white;"
+            style="background-color: green; margin: 0; color: white; font-weight: bold"
             :style="{ width: monsterHealth + '%' }"
           >
             {{ monsterHealth }}
@@ -26,17 +26,28 @@
         </div>
       </div>
     </section>
-    <section class="row controls">
+    <!-- v-if and v-else need to follow each other and both need to be on the same element (e.g. both on a section as here) -->
+    <section class="row controls" v-if="!gameIsRunning">
       <div class="small-12 columns">
-        <button id="start-game">START NEW GAME</button>
+        <button id="start-game" @click="startGame">START NEW GAME</button>
       </div>
     </section>
-    <section class="row controls">
+    <section class="row controls" v-else>
       <div class="small-12 columns">
-        <button id="attack" @click="playerHpDown">ATTACK</button>
-        <button id="special-attack">SPECIAL ATTACK</button>
-        <button id="heal">HEAL</button>
-        <button id="give-up">GIVE UP</button>
+        <button id="attack" @click="attack">ATTACK</button>
+        <button id="special-attack" @click="specialAttack">
+          SPECIAL ATTACK
+          <span class="button-count" v-if="specialAttacks >= 0">
+            {{ specialAttacks }}
+          </span>
+          <span class="button-count" v-else>0</span>
+        </button>
+        <button id="heal" @click="heal">
+          HEAL
+          <span class="button-count" v-if="heals >= 0">{{ heals }}</span>
+          <span class="button-count" v-else>0</span>
+        </button>
+        <button id="give-up" @click="giveUp">GIVE UP</button>
       </div>
     </section>
     <section class="row log">
@@ -56,13 +67,81 @@ export default {
     return {
       playerHealth: 100,
       monsterHealth: 100,
-      gameIsRunning: false
+      gameIsRunning: false,
+      specialAttacks: 3,
+      heals: 3
     };
   },
   components: {},
   methods: {
-    playerHpDown: function() {
-      this.playerHealth--;
+    startGame: function() {
+      this.gameIsRunning = true;
+      this.playerHealth = 100;
+      this.monsterHealth = 100;
+      this.specialAttacks = 3;
+      this.heals = 3;
+    },
+    attack: function() {
+      this.calculateMonsterHealth(3, 10);
+      if (this.checkWin()) {
+        return;
+      }
+      this.monsterAttacks();
+    },
+    specialAttack: function() {
+      this.specialAttacks--;
+      if (this.specialAttacks >= 0) {
+        this.calculateMonsterHealth(10, 20);
+        if (this.checkWin()) {
+          return;
+        }
+        this.monsterAttacks();
+      } else {
+        document.getElementById("special-attack").style = "disabled";
+      }
+    },
+    monsterAttacks: function() {
+      this.playerHealth -= this.calculateDamage(5, 12);
+      this.checkWin();
+    },
+    heal: function() {
+      if (this.heals >= 0 && this.playerHealth <= 90) {
+        this.heals--;
+        this.playerHealth += 10;
+        this.monsterAttacks();
+      } else if (this.heals >= 0 && this.playerHealth >= 91) {
+        alert("You cannot use healing if your health is over 90");
+        document.getElementById("heal").style = "disabled";
+      } else {
+        document.getElementById("heal").style = "disabled";
+      }
+    },
+    giveUp: function() {
+      this.gameIsRunning = false;
+    },
+    calculateDamage: function(minDamage, maxDamage) {
+      return Math.max(Math.floor(Math.random() * maxDamage) + 1, minDamage);
+    },
+    calculateMonsterHealth: function(minDamage, maxDamage) {
+      this.monsterHealth -= this.calculateDamage(minDamage, maxDamage);
+    },
+    checkWin: function() {
+      if (this.monsterHealth <= 0) {
+        if (confirm("You won! New game?")) {
+          this.startGame();
+        } else {
+          this.gameIsRunning = false;
+        }
+        return true;
+      } else if (this.playerHealth <= 0) {
+        if (confirm("You're dead! New game?")) {
+          this.startGame();
+        } else {
+          this.gameIsRunning = false;
+        }
+        return true;
+      }
+      return false;
     }
   },
   computed: [],
@@ -72,107 +151,11 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-#app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-.text-center {
-  text-align: center;
-}
-
-.healthbar {
-  width: 80%;
-  height: 40px;
-  background-color: #eee;
-  margin: auto;
-  transition: width 500ms;
-}
-
-.controls,
-.log {
-  margin-top: 30px;
-  text-align: center;
-  padding: 10px;
-  border: 1px solid #ccc;
-  box-shadow: 0px 3px 6px #ccc;
-}
-
-.turn {
-  margin-top: 20px;
-  margin-bottom: 20px;
-  font-weight: bold;
-  font-size: 22px;
-}
-
-.log ul {
-  list-style: none;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.log ul li {
-  margin: 5px;
-}
-
-.log ul .player-turn {
-  color: blue;
-  background-color: #e4e8ff;
-}
-
-.log ul .monster-turn {
-  color: red;
-  background-color: #ffc0c1;
-}
-
-button {
-  font-size: 20px;
-  background-color: #eee;
-  padding: 12px;
-  box-shadow: 0 1px 1px black;
-  margin: 10px;
-}
-
-#start-game {
-  background-color: #aaffb0;
-}
-
-#start-game:hover {
-  background-color: #76ff7e;
-}
-
-#attack {
-  background-color: #ff7367;
-}
-
-#attack:hover {
-  background-color: #ff3f43;
-}
-
-#special-attack {
-  background-color: #ffaf4f;
-}
-
-#special-attack:hover {
-  background-color: #ff9a2b;
-}
-
-#heal {
-  background-color: #aaffb0;
-}
-
-#heal:hover {
-  background-color: #76ff7e;
-}
-
-#give-up {
-  background-color: #ffffff;
-}
-
-#give-up:hover {
-  background-color: #c7c7c7;
+.button-count {
+  font-weight: 700;
+  color: white;
+  border: 1px;
+  background-color: black;
+  padding: 0 3px;
 }
 </style>
