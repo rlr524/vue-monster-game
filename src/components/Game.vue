@@ -70,6 +70,7 @@
 </template>
 
 <script>
+// TODO: Bug: When player loses and starts new game, the final line of the log perisists
 export default {
   name: "Game",
   data() {
