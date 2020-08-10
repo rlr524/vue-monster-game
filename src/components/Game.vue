@@ -50,10 +50,19 @@
         <button id="give-up" @click="giveUp">GIVE UP</button>
       </div>
     </section>
-    <section class="row log">
+    <section class="row log" v-if="turns.length != 0">
       <div class="small-12 columns">
         <ul>
-          <li></li>
+          <li
+            v-for="(turn, index) in turns"
+            :key="index"
+            :class="{
+              'player-turn': turn.isPlayer,
+              'monster-turn': !turn.isPlayer
+            }"
+          >
+            {{ turn.text }}
+          </li>
         </ul>
       </div>
     </section>
@@ -69,12 +78,14 @@ export default {
       monsterHealth: 100,
       gameIsRunning: false,
       specialAttacks: 3,
-      heals: 3
+      heals: 3,
+      turns: []
     };
   },
   components: {},
   methods: {
     startGame: function() {
+      this.turns = [];
       this.gameIsRunning = true;
       this.playerHealth = 100;
       this.monsterHealth = 100;
@@ -82,7 +93,12 @@ export default {
       this.heals = 3;
     },
     attack: function() {
-      this.calculateMonsterHealth(3, 10);
+      let damage = this.calculateDamage(3, 10);
+      this.monsterHealth -= damage;
+      this.turns.unshift({
+        isPlayer: true,
+        text: `Player hits monster for ${damage}`
+      });
       if (this.checkWin()) {
         return;
       }
@@ -90,8 +106,13 @@ export default {
     },
     specialAttack: function() {
       this.specialAttacks--;
+      let damage = this.calculateDamage(10, 20);
       if (this.specialAttacks >= 0) {
-        this.calculateMonsterHealth(10, 20);
+        this.monsterHealth -= damage;
+        this.turns.unshift({
+          isPlayer: true,
+          text: `Player special attacks monster for ${damage}`
+        });
         if (this.checkWin()) {
           return;
         }
@@ -101,14 +122,24 @@ export default {
       }
     },
     monsterAttacks: function() {
-      this.playerHealth -= this.calculateDamage(5, 12);
+      let damage = this.calculateDamage(5, 12);
+      this.playerHealth -= damage;
       this.checkWin();
+      this.turns.unshift({
+        isPlayer: false,
+        text: `Monster hits player for ${damage}`
+      });
     },
     heal: function() {
       if (this.heals >= 0 && this.playerHealth <= 90) {
+        let damage = 10;
         this.heals--;
-        this.playerHealth += 10;
+        this.playerHealth += damage;
         this.monsterAttacks();
+        this.turns.unshift({
+          isPlayer: true,
+          text: `Player heals ${damage} of damage`
+        });
       } else if (this.heals >= 0 && this.playerHealth >= 91) {
         alert("You cannot use healing if your health is over 90");
         document.getElementById("heal").style = "disabled";
@@ -118,12 +149,13 @@ export default {
     },
     giveUp: function() {
       this.gameIsRunning = false;
+      this.turns.unshift({
+        isPlayer: true,
+        text: `Player gives up`
+      });
     },
     calculateDamage: function(minDamage, maxDamage) {
       return Math.max(Math.floor(Math.random() * maxDamage) + 1, minDamage);
-    },
-    calculateMonsterHealth: function(minDamage, maxDamage) {
-      this.monsterHealth -= this.calculateDamage(minDamage, maxDamage);
     },
     checkWin: function() {
       if (this.monsterHealth <= 0) {
